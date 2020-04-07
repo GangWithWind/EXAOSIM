@@ -37,7 +37,7 @@ def test_ao():
 
     target = Target()
 
-    npix = wfs.n_grid * wfs.aperture_pix
+    npix = dm.n_grid * wfs.aperture_pix
     scale = wfs.apertures[0].pupil_scal
     pupil = CirclePupil(wfs.whole_pupil_d, pixsize=npix, scale=scale)
     pupil.make_pupil()
@@ -96,5 +96,5 @@ def test_poke():
     # plt.show()
 
 if __name__ == "__main__":
-#    test_ttm()
+    test_ttm()
     test_ao()

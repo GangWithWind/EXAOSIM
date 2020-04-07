@@ -34,7 +34,7 @@ class WFSCal(object):
             value = all_sum[0:len(all_sum)//3].mean()
             used = all_sum0 > (value * self.critic)
         else:
-            used = all_sum0 > -10000
+            used = all_sum > -10000
 
         self.subs = all_sub[used]
         self.n_sub = self.subs.shape[0]
@@ -203,7 +203,7 @@ class AOControl(object):
         self.n_act = dm.n_act
         wc = WFSCal()
         self.wfs_calulator = wc
-        self.gain = 0.2
+        self.gain = 1.1
         self.poke_u = 0.1
         self.ccd = ccd
 
@@ -276,18 +276,17 @@ class AOControl(object):
             self.run_dm(vol)
             img = self.run_wfs()
 
-            self.plot(wfs_img=img, dm_vol=vol)
+            # self.plot(wfs_img=img, dm_vol=vol)
 
             shifts = self.wfs_calulator.shifts_calculation(img)
             allshifts.append(shifts.flatten())
         allshifts = np.array(allshifts)
         s_mean = abs(allshifts).mean(axis=1)
-        self.dm_mask  = np.where(s_mean > s_mean.mean() * 0.5)[0]
+        self.dm_mask  = np.where(s_mean > (s_mean.mean() * 0.3))[0]
 
         # fits.writeto('allss.fits', allshifts, overwrite=True)
         # fits.writeto('allpp.fits', np.array(allpos), overwrite=True)
-        self.poke_mat = allshifts / self.poke_u
-
+        self.poke_mat = allshifts
 
         self.matrix_cal(allshifts[self.dm_mask, :])
         
@@ -303,6 +302,9 @@ class AOControl(object):
 
         vol0 = np.zeros(self.n_act)
         vol0 = (np.random.rand(self.n_act) - 0.5) * 0.5
+        vol1 = vol0.copy()
+        vol1[self.dm_mask] = 0
+        vol0 = vol0 - vol1
         self.run_dm(vol0)
         self.phase = self.phase_dm
         sp = self.phase_dm.shape
@@ -311,7 +313,7 @@ class AOControl(object):
         for i in range(n_inter):
             img = self.run_wfs()
             shifts = self.wfs_calulator.shifts_calculation(img)
-            dvol = shifts.flatten() @ self.Mat * self.gain
+            dvol = shifts.flatten() @ self.Mat * self.gain * self.poke_u
             vol[self.dm_mask] += dvol
             vol = vol - vol.mean()
             # vol = np.maximum(np.minimum(vol, 1), -1)
