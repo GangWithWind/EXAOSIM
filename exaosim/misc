@@ -1,0 +1,67 @@
+class testaperture
+    def patch_image(self):
+        pass
+
+        
+
+    def get_image(self, wavelength, target, 
+                  phase = {'type':'None', 'screen':'None'}):
+                  
+        self.get_self_image(wavelength, phase = phase)
+            
+        sz = [len(wavelength), self.pixsize, self.pixsize]
+        final_img = np.zeros(sz, dtype = float)
+  
+            img = self.image[iwl]
+                
+            cutimg = self.cut(img, [self.pix_size, self.pix_size],
+                                center = pos[:2] / self.plate_scal ) ** 2
+            final_img[iwl, :, :] += cutimg/cutimg.sum() * pos[2]
+            
+        return final_img
+        
+
+    def cut2(self, psf, size, center = [0, 0]):
+        '''
+        cut the image to a certen size, base on the center of the image. Used in Camera Object.
+        '''
+        sz = psf.shape
+            
+        xc = center[0] + sz[0]/2
+        yc = center[1] + sz[1]/2
+        
+        xstart = int(xc - size[0]/2)
+        ystart = int(yc - size[1]/2)
+        xend = xstart + size[0]
+        yend = ystart + size[1]
+        psf = psf[xstart:xend, ystart:yend]
+        dx = (xc - size[0]/2) - xstart
+        dy = (yc - size[1]/2) - ystart  
+             
+        return ndshift(psf, (dx, dy))
+        
+        
+    def cut(self, psf, size, center = [0, 0]):
+        '''
+        cut the image to a certen size, base on the center of the image. Used in Camera Object.
+        '''
+        sz = psf.shape
+        xs = 0
+        ys = 0
+        if sz[0]%2 != size[0]%2:
+            xs = -0.5
+        if sz[1]%2 != size[1]%2:
+            ys = -0.5
+
+        psf1 = ndshift(psf, (xs + center[0], ys + center[1]))
+        psf = np.zeros(size, dtype = float)
+        
+        if size[0] < sz[0]:
+            xstart = int((sz[0] - size[0]) / 2 + xs)
+            ystart = int((sz[1] - size[1]) / 2 + ys)
+            return psf1[xstart:xstart+size[0], ystart:ystart+size[1]]
+        else:
+            xstart = -int((sz[0] - size[0]) / 2 + xs)
+            ystart = -int((sz[1] - size[1]) / 2 + ys)
+            psf[xstart:xstart+sz[0], ystart:ystart+sz[1]] = psf1
+            return psf

@@ -159,4 +159,9 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+
+# fits bin
+*.fits
+*.bin
+*.ipynb
 # End of https://www.gitignore.io/api/linux,python,windows,visualstudiocode
