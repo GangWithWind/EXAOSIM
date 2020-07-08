@@ -14,7 +14,7 @@ def noll_indices(j):
     """Convert from 1-D to 2-D indexing for Zernikes or Hexikes.
 
     Parameters
-    ----------
+    
     j : int
         Zernike function ordinate, following the convention of Noll et al. JOSA 1976.
         Starts at 1.

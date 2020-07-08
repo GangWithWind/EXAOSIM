@@ -206,6 +206,8 @@ class AOControl(object):
         self.gain = 1.1
         self.poke_u = 0.1
         self.ccd = ccd
+        # if(self.wfs.gpu_turbo):
+        #     self.wfs.cuda_plan(320)
 
         plt.ion()
         f, ax = plt.subplots(2, 2, figsize=(12, 12))
@@ -223,16 +225,16 @@ class AOControl(object):
             self.ax[1, 0].cla()
             self.ax[1, 0].imshow(wfs_img)
             self.ax[1, 0].set_title('wfs image')
-            for subs in self.wfs_calulator.subs:
-                sub = subs - 0.5
-                self.ax[1, 0].plot([sub[0], sub[1], sub[1], sub[0], sub[0]], 
-                [sub[2], sub[2], sub[3], sub[3], sub[2]], 'r')
+            # for subs in self.wfs_calulator.subs:
+            #     sub = subs - 0.5
+            #     self.ax[1, 0].plot([sub[0], sub[1], sub[1], sub[0], sub[0]], 
+            #     [sub[2], sub[2], sub[3], sub[3], sub[2]], 'r')
 
         if np.any(ccd_img):
             self.ax[0, 1].cla()
             self.ax[0, 1].imshow(ccd_img)
             self.ax[0, 1].set_title('ccd image')
-        if np.any(dm_vol):
+        if np.any(dm_vol): 
             self.ax[1, 1].cla()
             self.ax[1, 1].imshow(self.dm.run(dm_vol))
             self.ax[1, 1].set_title('dm shape')
@@ -250,6 +252,7 @@ class AOControl(object):
 
     def run_wfs(self):
         img = self.wfs.take_image_fast(self.phase_dm, self.target)
+        # img = self.wfs.cuda_run(self.phase_dm)
         return img
 
     def run_ccd(self):

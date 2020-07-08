@@ -1,5 +1,6 @@
 import struct
 import numpy as np
+import time
 
 
 def read_c_array(file):

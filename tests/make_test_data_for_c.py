@@ -56,7 +56,7 @@ def make_ttm_data():
 
 def make_wfs_data():
     wfs = WFS()
-    wfs.n_grid = 32
+    wfs.n_grid = 31
     wfs.plate_scale = 0.6
     wfs.plate_interval = 5
     wfs.plate_pix = 15
@@ -67,11 +67,30 @@ def make_wfs_data():
     wfs.sub_aperture_config()
     wfs.make_sub_aperture(edge_effect=True)
 
+
     dm = DeformMirror()
     dm.n_grid = wfs.n_grid + 1
     dm.act_pix = wfs.aperture_pix
     dm.act_config()
 
+    subs = []
+    ph_sz = dm.n_grid * dm.act_pix
+    ph_cen = (ph_sz - 1)/2
+    sz = wfs.aperture_pix
+
+    pupils = []
+
+    for ap in wfs.apertures:
+        pos = (ph_cen + ap.position / ap.pupil_scal - sz / 2).astype(int)
+        subs.append(pos)
+        pupils.append(ap.pupil.pupil)
+
+    subs = np.array(subs)
+    pupils = np.array(pupils)
+    
+    write_c_array('testdata/wfs_subs.bin', subs)
+    write_c_array('testdata/wfs_pupils.bin', pupils)
+    
     target = Target()
 
     npix = wfs.n_grid * wfs.aperture_pix
@@ -84,6 +103,7 @@ def make_wfs_data():
     ao.init_optics()
     dx = (wfs.plate_pix - wfs.plate_interval)//2
     ao.sub_aperture_config(wfs.n_grid, [dx, dx], wfs.plate_interval)
+    
     ao.poke()
 
     write_c_array('testdata/poke_mat.bin', ao.poke_mat)
@@ -96,7 +116,7 @@ def make_wfs_data():
     vol0[ao.dm_mask] = (np.random.rand(ao.Mat.shape[1])-0.5) * 0.5
     ao.run_dm(vol0)
     ao.phase = ao.phase_dm
-
+    write_c_array('testdata/wfs_phase.bin', ao.phase)
     img = ao.run_wfs()
     write_c_array('testdata/wfs_image.bin', img)
     shifts = ao.wfs_calulator.shifts_calculation(img)
@@ -109,4 +129,4 @@ def make_wfs_data():
 
 
 if __name__ == "__main__":
-    make_ttm_data()
+    make_wfs_data()

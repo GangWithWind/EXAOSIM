@@ -1,6 +1,5 @@
 {
     "editor.fontSize": 15,
-    "python.pythonPath": "C:\\Users\\Administrator\\Anaconda3\\python.exe",
     "python.testing.pytestArgs": [
         "tests"
     ],

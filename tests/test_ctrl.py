@@ -19,7 +19,7 @@ def test_wfs_ctrl():
 
 def test_ao():
     wfs = WFS()
-    wfs.n_grid = 8
+    wfs.n_grid = 10
     wfs.plate_scale = 0.6
     wfs.plate_interval = 5
     wfs.plate_pix = 15
@@ -96,5 +96,4 @@ def test_poke():
     # plt.show()
 
 if __name__ == "__main__":
-    test_ttm()
     test_ao()
