@@ -193,6 +193,21 @@ class DM(Device):
         fits.writeto('./dmfits/phase0_%d.fits'%self.file_i, self.phase.reshape((self.npix, self.npix)), overwrite=True)
 
 
+class TipTiltMirror(object):
+    def __init__(self, pix):
+        self.pix = pix
+        x = (np.arange(pix) - (pix - 1)/2)/(pix - 1) * 2
+        yy, xx = np.meshgrid(x, x)
+        self.yy = yy.astype(np.float32).flatten() * 10
+        self.xx = xx.astype(np.float32).flatten() * 10
+        self.n_act = 2
+        self.size = 2
+        self.phase = np.zeros(pix * pix)
+
+    def get_data(self, vol):
+        self.phase = self.xx * vol[0] + self.yy * vol[1] 
+
+
 class SubAperture(object):
     def __init__(self):
         self.pos = []

@@ -161,7 +161,7 @@ void cuwfs_run(float* wfs_img, float* phase, int index){
     }
 
 
-    WFSPLAN *cp = plans[0];
+    WFSPLAN *cp = plans[index];
     cudaMemcpy(cp->d_phase, phase, cp->g_phase_sz * cp->g_phase_sz * sizeof(float), cudaMemcpyHostToDevice);
     SetFFTInput<<<cp->blocksPerGrid_fftin, cp->threadsPerBlock>>>(cp->d_fft_input, cp->d_phase, cp->d_subs, cp->d_pupil,
         cp->g_n_big, cp->g_n_big, cp->g_sub_sz, cp->g_sub_sz, cp->g_phase_sz, cp->g_nsub);

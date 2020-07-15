@@ -12,8 +12,7 @@ class Aberration(object):
         self.x_dir = 1
         self.y_dir = 1
         self.time0 = 0
-        self.speed = 10
-
+        self.speed = 100
 
     def initial(self):
         xx, yy = np.meshgrid(np.arange(self.bigsz[0]), np.arange(self.bigsz[1]))
@@ -68,7 +67,7 @@ class TurbAbrr(Aberration):
     def __init__(self):
         super().__init__()
         self.order = 10
-        self.r0 = 0.1
+        self.r0 = 0.5
         self.L0 = None
         self.sizem = 14
 
@@ -102,5 +101,5 @@ class TurbAbrr(Aberration):
     def initial(self):
         self.pixsize = self.bigsz[0]
         self.get_filter()
-        self.big_phase = self.new_phs()
+        self.big_phase = self.new_phs()/2
         self.phase = np.zeros(self.phase_sz)

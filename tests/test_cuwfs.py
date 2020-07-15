@@ -140,12 +140,12 @@ def test_device():
     ccd = WFS()
     ccd.n_grid = 1
     ccd.aperture_pix = wfs.aperture_pix * wfs.n_grid
-    ccd.paerture_size = 2/wfs.n_grid
+    ccd.aperture_size = 2/wfs.n_grid
     ccd.plate_pix = 512
     ccd.plate_interval = 512
     ccd.rebin = 1
     ccd.fast_Nbig = 512 * 6
-    ccd.aperture_size = wfs.whole_pupil_d / wfs.n_grid
+    ccd.aperture_size = ccd.whole_pupil_d / ccd.n_grid
     
     ccd.phase_pix = phase_size
     ccd.in_time = frame_time

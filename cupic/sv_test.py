@@ -43,5 +43,3 @@ t = threading.Thread(target=wfs_sock, args=[sock])
 t.setDaemon(True)
 t.start()
 time.sleep(100)
-
-
