@@ -4,11 +4,11 @@ import numpy as np
 import time
 import ctypes
 import matplotlib.pyplot as plt
-from .cuwfs import DM, WFS
+from astropy.io import fits
+from .cuwfs import DM, WFS, TipTiltMirror
 from exaosim.aberration import TurbAbrr
 
 cu_lib = ctypes.cdll.LoadLibrary("../exaosim/lib/libcuwfs2.so")
-
 
 def recv3(sock, ll):
     line = bytearray(ll)
@@ -45,6 +45,7 @@ class Port(object):
         self.n_pack = 1
         self.s_in_pack = 32
         self.n_in_pack = 32
+        self.name = ''
 
     def init_socket(self):
 
@@ -69,7 +70,7 @@ class Port(object):
 
     def recv(self):
         while True:
-            print('wait connection..')
+            print(self.name + ' ready, waiting connection..')
             client, addr = self.sock.accept()
             self.client = client
             while True:
@@ -77,7 +78,8 @@ class Port(object):
                 if flag < 0:
                     break
                 output_data = self.processor(input_data)
-                send3(client, output_data)
+                if type(output_data) == np.ndarray:
+                    send3(client, output_data)
 
 
 class Optics(object):
@@ -104,6 +106,41 @@ class Optics(object):
         wfs.init_output()
         wfs.cuda_camera_index = 0
 
+        guide = WFS()
+        guide.n_grid = 1
+        guide.aperture_pix = phase_size
+        guide.plate_pix = 256
+        guide.plate_interval = 256
+        guide.rebin = 1
+        guide.fast_Nbig = 320 * 5
+        guide.aperture_size = 2.0
+        guide.phase_pix = phase_size
+
+        guide.sub_aperture_config()
+        guide.make_sub_aperture(edge_effect=True)
+        guide.cuda_camera_index = 1
+        guide.cuda_plan(cu_lib)
+        guide.init_output()
+
+
+        ccd = WFS()
+        ccd.n_grid = 1
+        ccd.aperture_pix = phase_size
+        ccd.plate_pix = 512
+        ccd.plate_interval = 512
+        ccd.rebin = 1
+        ccd.fast_Nbig = 320 * 6
+        ccd.aperture_size = 2.0
+        ccd.phase_pix = phase_size
+
+        ccd.sub_aperture_config()
+        ccd.make_sub_aperture(edge_effect=True)
+        ccd.cuda_camera_index = 2
+        ccd.cuda_plan(cu_lib)
+        ccd.init_output()
+
+        ttm = TipTiltMirror(phase_size)
+
         abrr = TurbAbrr()
         abrr.bigsz = [2000, 2000]
         abrr.phase_sz = [phase_size, phase_size]
@@ -113,41 +150,80 @@ class Optics(object):
         dm_wfs_port.port = 45236
         dm_wfs_port.input_size = dm.n_act
         dm_wfs_port.processor = self.dm_wfs_fun
+        dm_wfs_port.name = 'DM-WFS'
+
+        ttm_guide_port = Port()
+        ttm_guide_port.port = 55236
+        ttm_guide_port.input_size = ttm.n_act
+        ttm_guide_port.processor = self.ttm_guide_fun
+        ttm_guide_port.name = 'TTM-GUIDE'
 
         phase_port = Port()
         phase_port.port = 35236
         phase_port.input_size = 1
         phase_port.input_type = np.int32
         phase_port.processor = self.phase_on
+        phase_port.name = 'LASER SWITCHER'
 
         svd_port = Port()
         svd_port.port = 25236
         svd_port.input_size = 1024 * 1498
         svd_port.input_type = np.float32
-        svd_port.processor = self.svd_inv_fun()
+        svd_port.processor = self.svd_inv_fun
+        svd_port.name = 'SVD CACULATOR'
+
+        ccd_port = Port()
+        ccd_port.port = 65236
+        ccd_port.input_size = 1
+        ccd_port.input_type = np.int32
+        ccd_port.processor = self.ccd_send_fun
+        ccd_port.name = 'SCIENCE CCD'
 
         self.wfs = wfs
         self.dm = dm
         self.abrr = abrr
+        self.ttm = ttm
+        self.guide = guide
+        self.ccd = ccd
         self.dm_wfs_port = dm_wfs_port
         self.phase_port = phase_port
+        self.ttm_guide_port = ttm_guide_port
+        self.svd_port = svd_port
+        self.ccd_port = ccd_port
         self.zero_phase = np.zeros(phase_size * phase_size, dtype=np.float32)
         self.phase_on(0)
 
-    def svd_inv_fun(self, poke_mat):        
-        dm_eff = (poke_mat**2).sum(axis = 1)
+    def svd_inv_fun(self, poke_mat):
+        poke_mat = poke_mat.reshape(1024, 1498)
+        fits.writeto('poke_mat.fits', poke_mat.reshape(1024, 1498), overwrite=True)
+        dm_eff = (poke_mat**2).sum(axis=1)
         dm_used = dm_eff > 0.02
+        print(dm_used.sum())
         pm_t = poke_mat[dm_used, :]
         U, D, Vt = np.linalg.svd(pm_t, full_matrices=False)
         D2 = 1/(D + 1e-10)
         D2[D < 1e-4] = 0
         Mat = Vt.T @ np.diag(D2) @ U.T
-        return Mat.flatten().astype(np.float32)
+        print(Mat.shape)
+        out = np.hstack([dm_used.astype(np.float32), Mat.flatten().astype(np.float32)])
+        return out
 
     def dm_wfs_fun(self, volt):
         self.dm.get_data(volt)
-        self.wfs.get_data((self.phase_fun().flatten() + self.dm.phase).astype(np.float32))
+        self.wfs.get_data((self.phase_fun().flatten() + self.dm.phase + self.ttm.phase).astype(np.float32))
         return self.wfs.data
+
+    def ccd_send_fun(self, _):
+        self.ccd.get_data((self.phase_fun().flatten() + self.dm.phase + self.ttm.phase).astype(np.float32))
+        self.ccd.data /= 1e9
+        # fits.writeto("ccd.fits", self.ccd.data.reshape(512,512), overwrite=True)
+        return self.ccd.data
+
+    def ttm_guide_fun(self, volt):
+        self.ttm.get_data(volt)
+        self.guide.get_data((self.phase_fun().flatten() + self.ttm.phase).astype(np.float32))
+        # fits.writeto('guide.fits', self.guide.data.reshape(256,256), overwrite=True)
+        return self.guide.data
 
     def phase_on(self, on):
         if on:
@@ -160,7 +236,10 @@ class Optics(object):
     def loop(self):
         self.phase_port.init_socket()
         self.dm_wfs_port.init_socket()
-        time.sleep(30)
+        self.svd_port.init_socket()
+        self.ttm_guide_port.init_socket()
+        self.ccd_port.init_socket()
+        time.sleep(300)
         # plt.ion()
         # f, ax = plt.subplots(2, 2, figsize=(12, 12))
         # for i in range(1000):
